@@ -1,0 +1,229 @@
+version: '3.8'
+
+# All secrets come from .env file. NEVER hardcode them here.
+# For GCP: set GCP_PROJECT_ID in .env and store secrets in Secret Manager.
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_auth_data:
+  postgres_account_data:
+  postgres_product_data:
+  postgres_order_data:
+  prometheus_data:
+  grafana_data:
+
+services:
+
+  # ── Databases ─────────────────────────────────────────────────────────────
+
+  auth-db:
+    image: postgres:16-alpine
+    container_name: auth-db
+    env_file: [.env]
+    environment:
+      POSTGRES_USER: ${AUTH_DB_USER}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
+      POSTGRES_DB: ${AUTH_DB_NAME}
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [app-network]
+
+  account-db:
+    image: postgres:16-alpine
+    container_name: account-db
+    env_file: [.env]
+    environment:
+      POSTGRES_USER: ${ACCOUNT_DB_USER}
+      POSTGRES_PASSWORD: ${ACCOUNT_DB_PASSWORD}
+      POSTGRES_DB: ${ACCOUNT_DB_NAME}
+    volumes:
+      - postgres_account_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [app-network]
+
+  product-db:
+    image: postgres:16-alpine
+    container_name: product-db
+    env_file: [.env]
+    environment:
+      POSTGRES_USER: ${PRODUCT_DB_USER}
+      POSTGRES_PASSWORD: ${PRODUCT_DB_PASSWORD}
+      POSTGRES_DB: ${PRODUCT_DB_NAME}
+    volumes:
+      - postgres_product_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [app-network]
+
+  order-db:
+    image: postgres:16-alpine
+    container_name: order-db
+    env_file: [.env]
+    environment:
+      POSTGRES_USER: ${ORDER_DB_USER}
+      POSTGRES_PASSWORD: ${ORDER_DB_PASSWORD}
+      POSTGRES_DB: ${ORDER_DB_NAME}
+    volumes:
+      - postgres_order_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [app-network]
+
+  # ── Microservices ─────────────────────────────────────────────────────────
+
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    env_file: [.env]
+    environment:
+      HTTP_PORT: "8081"
+      DB_DSN: "host=auth-db port=5432 user=${AUTH_DB_USER} password=${AUTH_DB_PASSWORD} dbname=${AUTH_DB_NAME} sslmode=disable"
+      JWT_SECRET: ${JWT_SECRET}
+      ACCESS_TOKEN_TTL_MINUTES: "60"
+      REFRESH_TOKEN_TTL_DAYS: "30"
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    networks: [app-network]
+    restart: unless-stopped
+
+  account-service:
+    build: ./account-service
+    container_name: account-service
+    env_file: [.env]
+    environment:
+      HTTP_PORT: "8082"
+      DB_DSN: "host=account-db port=5432 user=${ACCOUNT_DB_USER} password=${ACCOUNT_DB_PASSWORD} dbname=${ACCOUNT_DB_NAME} sslmode=disable"
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+    depends_on:
+      account-db:
+        condition: service_healthy
+    networks: [app-network]
+    restart: unless-stopped
+
+  product-service:
+    build: ./product-service
+    container_name: product-service
+    env_file: [.env]
+    environment:
+      HTTP_PORT: "8083"
+      DB_DSN: "host=product-db port=5432 user=${PRODUCT_DB_USER} password=${PRODUCT_DB_PASSWORD} dbname=${PRODUCT_DB_NAME} sslmode=disable"
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+    depends_on:
+      product-db:
+        condition: service_healthy
+    networks: [app-network]
+    restart: unless-stopped
+
+  order-service:
+    build: ./order-service
+    container_name: order-service
+    env_file: [.env]
+    environment:
+      HTTP_PORT: "8084"
+      DB_DSN: "host=order-db port=5432 user=${ORDER_DB_USER} password=${ORDER_DB_PASSWORD} dbname=${ORDER_DB_NAME} sslmode=disable"
+      PRODUCT_SERVICE_URL: "http://product-service:8083"
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+    depends_on:
+      order-db:
+        condition: service_healthy
+      product-service:
+        condition: service_started
+    networks: [app-network]
+    restart: unless-stopped
+
+  # ── Gateway ───────────────────────────────────────────────────────────────
+
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    env_file: [.env]
+    environment:
+      HTTP_PORT: "8080"
+      AUTH_SERVICE_URL: "http://auth-service:8081"
+      ACCOUNT_SERVICE_URL: "http://account-service:8082"
+      PRODUCT_SERVICE_URL: "http://product-service:8083"
+      ORDER_SERVICE_URL: "http://order-service:8084"
+      JWT_SECRET: ${JWT_SECRET}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+    depends_on: [auth-service, account-service, product-service, order-service]
+    networks: [app-network]
+    restart: unless-stopped
+
+  # ── Frontend ──────────────────────────────────────────────────────────────
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "80:80"
+    depends_on: [gateway]
+    networks: [app-network]
+    restart: unless-stopped
+
+  # ── Monitoring ────────────────────────────────────────────────────────────
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks: [app-network]
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    networks: [app-network]
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    depends_on: [prometheus]
+    networks: [app-network]
+    restart: unless-stopped

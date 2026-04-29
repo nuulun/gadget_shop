@@ -1,0 +1,22 @@
+# Secrets
+.env
+
+# Claude Code
+.claude/
+
+# Terraform
+terraform/
+
+# Node
+node_modules/
+frontend/node_modules/
+
+# Build output
+frontend/dist/
+
+# Docs
+*.md
+
+# OS
+.DS_Store
+Thumbs.db

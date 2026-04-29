@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+/* 3. Global Styles */
+@layer base {
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    /* This ensures your custom "Soft IT" background from tailwind.config.js is used */
+    @apply bg-background font-sans text-slate-900;
+  }
+
+  /* Resetting the default margin/flex behavior Vite adds */
+  #root {
+    width: 100%;
+  }
+}
+
+/* 4. Remove the default Vite centering behavior */
+body {
+  display: block;
+  /* Vite uses flex/place-items: center which breaks navbars */
+  min-height: 100vh;
+}
