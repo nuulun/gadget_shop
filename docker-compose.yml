@@ -1,11 +1,15 @@
 version: '3.8'
 
-# All secrets come from .env file. NEVER hardcode them here.
-# For GCP: set GCP_PROJECT_ID in .env and store secrets in Secret Manager.
 
 networks:
   app-network:
     driver: bridge
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 volumes:
   postgres_auth_data:
@@ -14,10 +18,11 @@ volumes:
   postgres_order_data:
   prometheus_data:
   grafana_data:
+  loki_data:
 
 services:
 
-  # ── Databases ─────────────────────────────────────────────────────────────
+  
 
   auth-db:
     image: postgres:16-alpine
@@ -99,10 +104,15 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       ACCESS_TOKEN_TTL_MINUTES: "60"
       REFRESH_TOKEN_TTL_DAYS: "30"
-      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
     depends_on:
       auth-db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging: *default-logging
     networks: [app-network]
     restart: unless-stopped
 
@@ -113,10 +123,15 @@ services:
     environment:
       HTTP_PORT: "8082"
       DB_DSN: "host=account-db port=5432 user=${ACCOUNT_DB_USER} password=${ACCOUNT_DB_PASSWORD} dbname=${ACCOUNT_DB_NAME} sslmode=disable"
-      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
     depends_on:
       account-db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging: *default-logging
     networks: [app-network]
     restart: unless-stopped
 
@@ -127,10 +142,15 @@ services:
     environment:
       HTTP_PORT: "8083"
       DB_DSN: "host=product-db port=5432 user=${PRODUCT_DB_USER} password=${PRODUCT_DB_PASSWORD} dbname=${PRODUCT_DB_NAME} sslmode=disable"
-      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
     depends_on:
       product-db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging: *default-logging
     networks: [app-network]
     restart: unless-stopped
 
@@ -142,12 +162,17 @@ services:
       HTTP_PORT: "8084"
       DB_DSN: "host=order-db port=5432 user=${ORDER_DB_USER} password=${ORDER_DB_PASSWORD} dbname=${ORDER_DB_NAME} sslmode=disable"
       PRODUCT_SERVICE_URL: "http://product-service:8083"
-      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
     depends_on:
       order-db:
         condition: service_healthy
       product-service:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8084/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging: *default-logging
     networks: [app-network]
     restart: unless-stopped
 
@@ -164,8 +189,13 @@ services:
       PRODUCT_SERVICE_URL: "http://product-service:8083"
       ORDER_SERVICE_URL: "http://order-service:8084"
       JWT_SECRET: ${JWT_SECRET}
-      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
     depends_on: [auth-service, account-service, product-service, order-service]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging: *default-logging
     networks: [app-network]
     restart: unless-stopped
 
@@ -177,6 +207,11 @@ services:
     ports:
       - "80:80"
     depends_on: [gateway]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
     networks: [app-network]
     restart: unless-stopped
 
@@ -204,11 +239,36 @@ services:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.enable-lifecycle'
+    networks: [app-network]
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks: [app-network]
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - ./monitoring/promtail/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on: [loki]
     networks: [app-network]
     restart: unless-stopped
 
