@@ -330,6 +330,11 @@
           "expr": "process_resident_memory_bytes{job!=\"prometheus\"}",
           "legendFormat": "{{job}}",
           "refId": "A"
+        },
+        {
+          "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+          "legendFormat": "System Memory Total",
+          "refId": "B"
         }
       ],
       "options": {
