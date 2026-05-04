@@ -337,6 +337,43 @@
           "custom": { "lineWidth": 2, "fillOpacity": 10 }
         }
       }
+    },
+    {
+      "type": "stat",
+      "title": "Container Restart Frequency",
+      "id": 13,
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 36 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "expr": "changes(process_start_time_seconds{job!=\"prometheus\",job!=\"node-exporter\"}[1h])",
+          "legendFormat": "{{job}}",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 3 }
+            ]
+          }
+        }
+      }
     }
   ]
 }

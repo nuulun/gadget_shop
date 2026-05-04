@@ -1,6 +1,5 @@
 version: '3.8'
 
-
 networks:
   app-network:
     driver: bridge
@@ -22,7 +21,6 @@ volumes:
 
 services:
 
-  
 
   auth-db:
     image: postgres:16-alpine
@@ -92,7 +90,6 @@ services:
       retries: 10
     networks: [app-network]
 
-  # ── Microservices ─────────────────────────────────────────────────────────
 
   auth-service:
     build: ./auth-service
@@ -162,6 +159,7 @@ services:
       HTTP_PORT: "8084"
       DB_DSN: "host=order-db port=5432 user=${ORDER_DB_USER} password=${ORDER_DB_PASSWORD} dbname=${ORDER_DB_NAME} sslmode=disable"
       PRODUCT_SERVICE_URL: "http://product-service:8083"
+    logging: *default-logging
     depends_on:
       order-db:
         condition: service_healthy
@@ -172,11 +170,9 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
-    logging: *default-logging
     networks: [app-network]
     restart: unless-stopped
 
-  # ── Gateway ───────────────────────────────────────────────────────────────
 
   gateway:
     build: ./gateway
@@ -199,7 +195,6 @@ services:
     networks: [app-network]
     restart: unless-stopped
 
-  # ── Frontend ──────────────────────────────────────────────────────────────
 
   frontend:
     build: ./frontend
@@ -215,7 +210,6 @@ services:
     networks: [app-network]
     restart: unless-stopped
 
-  # ── Monitoring ────────────────────────────────────────────────────────────
 
   node-exporter:
     image: prom/node-exporter:latest

@@ -17,6 +17,8 @@ frontend/dist/
 # Docs
 *.md
 
+.sh
+
 # OS
 .DS_Store
 Thumbs.db
