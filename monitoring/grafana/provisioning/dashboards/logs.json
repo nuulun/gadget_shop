@@ -56,7 +56,7 @@
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "{container=~\".+\", container!~\"loki|promtail|grafana\"} |~ \"50[0-9]|upstream service unavailable|upstream error\"",
+          "expr": "{container=~\".+\", container!~\"loki|promtail|grafana\"} |~ \" 50[0-9]|upstream service unavailable|upstream error\"",
           "refId": "A"
         }
       ],
