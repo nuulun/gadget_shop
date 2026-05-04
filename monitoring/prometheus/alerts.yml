@@ -24,25 +24,22 @@ groups:
           description: "{{ $labels.job }} error rate is above 5% for 1 minute."
 
       - alert: HighCPUUsage
-        expr: >
-          rate(process_cpu_seconds_total[2m]) * 100
-          / scalar(count(count(node_cpu_seconds_total{job="node-exporter"}) by (cpu)))
-          > 80
+        expr: 100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100) > 80
         for: 2m
         labels:
           severity: warning
         annotations:
-          summary: "High CPU usage on {{ $labels.job }}"
-          description: "{{ $labels.job }} CPU usage is above 80% for 2 minutes."
+          summary: "High system CPU usage"
+          description: "System CPU usage is above 80% for 2 minutes."
 
       - alert: HighMemoryUsage
-        expr: process_resident_memory_bytes > 400 * 1024 * 1024
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 85
         for: 2m
         labels:
           severity: warning
         annotations:
-          summary: "High memory usage on {{ $labels.job }}"
-          description: "{{ $labels.job }} is using more than 400MB of memory."
+          summary: "High system memory usage"
+          description: "System memory usage is above 85% for 2 minutes."
 
       - alert: HighRequestLatency
         expr: >

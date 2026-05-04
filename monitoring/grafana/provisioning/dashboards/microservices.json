@@ -288,21 +288,15 @@
     },
     {
       "type": "timeseries",
-      "title": "CPU Usage per Service (%)",
+      "title": "System CPU Usage (%)",
       "id": 10,
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "targets": [
         {
-          "expr": "rate(process_cpu_seconds_total{job!=\"prometheus\",job!=\"node-exporter\"}[$__rate_interval]) * 100 / scalar(count(count(node_cpu_seconds_total{job=\"node-exporter\"}) by (cpu)))",
-          "legendFormat": "{{job}}",
-          "refId": "A",
-          "interval": "15s"
-        },
-        {
           "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval])) * 100)",
-          "legendFormat": "System CPU Total",
-          "refId": "B",
+          "legendFormat": "System CPU Usage",
+          "refId": "A",
           "interval": "15s"
         }
       ],
