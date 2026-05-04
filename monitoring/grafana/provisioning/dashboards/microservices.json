@@ -321,20 +321,15 @@
     },
     {
       "type": "timeseries",
-      "title": "Memory Usage per Service (RSS)",
+      "title": "System Memory Usage (%)",
       "id": 11,
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "targets": [
         {
-          "expr": "process_resident_memory_bytes{job!=\"prometheus\"}",
-          "legendFormat": "{{job}}",
+          "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100",
+          "legendFormat": "System Memory Usage",
           "refId": "A"
-        },
-        {
-          "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
-          "legendFormat": "System Memory Total",
-          "refId": "B"
         }
       ],
       "options": {
@@ -343,8 +338,9 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "bytes",
+          "unit": "percent",
           "min": 0,
+          "max": 100,
           "custom": { "lineWidth": 2, "fillOpacity": 10 }
         }
       }
