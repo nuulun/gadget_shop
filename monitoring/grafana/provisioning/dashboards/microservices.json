@@ -298,6 +298,12 @@
           "legendFormat": "{{job}}",
           "refId": "A",
           "interval": "15s"
+        },
+        {
+          "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval])) * 100)",
+          "legendFormat": "System CPU Total",
+          "refId": "B",
+          "interval": "15s"
         }
       ],
       "options": {
