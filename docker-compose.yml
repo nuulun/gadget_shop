@@ -150,6 +150,11 @@ services:
     logging: *default-logging
     networks: [app-network]
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 512M
 
   order-service:
     build: ./order-service
@@ -172,6 +177,11 @@ services:
       retries: 3
     networks: [app-network]
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
 
 
   gateway:
