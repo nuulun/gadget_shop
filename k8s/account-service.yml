@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-service
+  namespace: gadget-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: account-service
+  template:
+    metadata:
+      labels:
+        app: account-service
+    spec:
+      containers:
+      - name: account-service
+        image: account-service:latest
+        imagePullPolicy: Never
+        env:
+        - name: HTTP_PORT
+          value: "8082"
+        - name: DB_DSN
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: ACCOUNT_DB_DSN
+        ports:
+        - containerPort: 8082
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8082
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: account-service
+  namespace: gadget-shop
+spec:
+  selector:
+    app: account-service
+  ports:
+  - port: 8082
+    targetPort: 8082

@@ -1,5 +1,6 @@
 # Secrets
 .env
+k8s/secrets.yml
 
 # Claude Code
 .claude/

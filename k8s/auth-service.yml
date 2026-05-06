@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: gadget-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+      - name: auth-service
+        image: auth-service:latest
+        imagePullPolicy: Never
+        env:
+        - name: HTTP_PORT
+          value: "8081"
+        - name: ACCESS_TOKEN_TTL_MINUTES
+          value: "60"
+        - name: REFRESH_TOKEN_TTL_DAYS
+          value: "30"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: JWT_SECRET
+        - name: DB_DSN
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: AUTH_DB_DSN
+        ports:
+        - containerPort: 8081
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: gadget-shop
+spec:
+  selector:
+    app: auth-service
+  ports:
+  - port: 8081
+    targetPort: 8081

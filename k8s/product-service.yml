@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-service
+  namespace: gadget-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: product-service
+  template:
+    metadata:
+      labels:
+        app: product-service
+    spec:
+      containers:
+      - name: product-service
+        image: product-service:latest
+        imagePullPolicy: Never
+        env:
+        - name: HTTP_PORT
+          value: "8083"
+        - name: DB_DSN
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: PRODUCT_DB_DSN
+        ports:
+        - containerPort: 8083
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8083
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "1500m"
+            memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-service
+  namespace: gadget-shop
+spec:
+  selector:
+    app: product-service
+  ports:
+  - port: 8083
+    targetPort: 8083
