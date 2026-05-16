@@ -210,6 +210,22 @@ services:
       restart_policy:
         condition: on-failure
 
+  node-exporter:
+    image: prom/node-exporter:latest
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks: [app-network]
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+
   prometheus:
     image: prom/prometheus:latest
     ports:
