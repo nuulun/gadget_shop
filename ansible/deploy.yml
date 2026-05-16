@@ -1,0 +1,91 @@
+---
+- name: Deploy gadget-shop to Kubernetes (k3s)
+  hosts: gcp_vm
+  become: true
+
+  vars:
+    app_dir: /home/ubuntu/gadget_shop
+    namespace: gadget-shop
+
+  tasks:
+    - name: Pull latest code
+      git:
+        repo: https://github.com/nuulun/gadget_shop.git
+        dest: "{{ app_dir }}"
+        force: true
+      become_user: ubuntu
+
+    - name: Build Docker images
+      shell: docker build -t {{ item }}:latest {{ app_dir }}/{{ item }}
+      loop:
+        - auth-service
+        - account-service
+        - product-service
+        - order-service
+        - payment-service
+        - notification-service
+        - gateway
+        - frontend
+
+    - name: Import images into k3s containerd
+      shell: docker save {{ item }}:latest | k3s ctr images import -
+      loop:
+        - auth-service
+        - account-service
+        - product-service
+        - order-service
+        - payment-service
+        - notification-service
+        - gateway
+        - frontend
+
+    - name: Copy secrets manifest
+      copy:
+        src: ../k8s/secrets.yml
+        dest: "{{ app_dir }}/k8s/secrets.yml"
+        owner: ubuntu
+        group: ubuntu
+        mode: "0600"
+
+    - name: Apply namespace
+      shell: kubectl apply -f {{ app_dir }}/k8s/namespace.yml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Apply secrets
+      shell: kubectl apply -f {{ app_dir }}/k8s/secrets.yml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Apply Prometheus RBAC
+      shell: kubectl apply -f {{ app_dir }}/k8s/prometheus-rbac.yml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Apply all remaining k8s manifests
+      shell: |
+        for f in {{ app_dir }}/k8s/*.yml; do
+          name=$(basename "$f")
+          if [[ "$name" != "namespace.yml" && "$name" != "secrets.yml" && "$name" != "prometheus-rbac.yml" ]]; then
+            kubectl apply -f "$f"
+          fi
+        done
+      args:
+        executable: /bin/bash
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Wait for order-service to be ready
+      shell: kubectl rollout status deployment/order-service -n {{ namespace }} --timeout=120s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Show running pods
+      shell: kubectl get pods -n {{ namespace }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: pods_output
+
+    - name: Print pod status
+      debug:
+        msg: "{{ pods_output.stdout_lines }}"

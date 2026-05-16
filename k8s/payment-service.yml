@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: gadget-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      containers:
+      - name: payment-service
+        image: payment-service:latest
+        imagePullPolicy: Never
+        env:
+        - name: HTTP_PORT
+          value: "8085"
+        - name: DB_DSN
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: PAYMENT_DB_DSN
+        ports:
+        - containerPort: 8085
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8085
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+  namespace: gadget-shop
+spec:
+  selector:
+    app: payment-service
+  ports:
+  - port: 8085
+    targetPort: 8085

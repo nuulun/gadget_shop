@@ -62,6 +62,17 @@ func (g *Gateway) Register(mux *http.ServeMux) {
 		g.proxyTo(w, r, g.cfg.OrderURL+"/orders/"+suffix)
 	})
 	mux.HandleFunc("/api/orders", g.orders)
+
+	// Payments
+	mux.HandleFunc("/api/payments/", func(w http.ResponseWriter, r *http.Request) {
+		suffix := strings.TrimPrefix(r.URL.Path, "/api/payments/")
+		g.proxyTo(w, r, g.cfg.PaymentURL+"/payments/"+suffix)
+	})
+	mux.HandleFunc("/api/payments", g.proxy(g.cfg.PaymentURL+"/payments"))
+
+	// Notifications
+	mux.HandleFunc("/api/notifications/send", g.proxy(g.cfg.NotificationURL+"/notifications/send"))
+	mux.HandleFunc("/api/notifications", g.proxy(g.cfg.NotificationURL+"/notifications"))
 }
 
 // ─── Auth handlers ────────────────────────────────────────────────────────────

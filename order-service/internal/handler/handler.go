@@ -26,9 +26,11 @@ type Handler struct{ svc OrderService }
 func New(svc OrderService) *Handler { return &Handler{svc: svc} }
 
 func (h *Handler) Register(mux *http.ServeMux) {
+
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, 200, map[string]string{"status": "ok", "service": "order-service"})
 	})
+	
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.HandleFunc("/orders/my-orders", h.myOrders)
 	mux.HandleFunc("/orders/", h.orderByID)

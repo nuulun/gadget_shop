@@ -25,6 +25,10 @@ spec:
           value: "false"
         ports:
         - containerPort: 3000
+        volumeMounts:
+        - name: provisioning
+          mountPath: /etc/grafana/provisioning
+          readOnly: true
         resources:
           requests:
             cpu: "100m"
@@ -32,6 +36,11 @@ spec:
           limits:
             cpu: "500m"
             memory: "256Mi"
+      volumes:
+      - name: provisioning
+        hostPath:
+          path: /home/ubuntu/gadget_shop/monitoring/grafana/provisioning
+          type: Directory
 ---
 apiVersion: v1
 kind: Service

@@ -12,13 +12,15 @@ import (
 )
 
 type Config struct {
-	HTTPPort   string
-	JWTSecret  string
-	AuthURL    string
-	AccountURL string
-	ProductURL string
-	OrderURL   string
-	GCPProject string
+	HTTPPort        string
+	JWTSecret       string
+	AuthURL         string
+	AccountURL      string
+	ProductURL      string
+	OrderURL        string
+	PaymentURL      string
+	NotificationURL string
+	GCPProject      string
 }
 
 func Load(ctx context.Context) (*Config, error) {
@@ -31,13 +33,15 @@ func Load(ctx context.Context) (*Config, error) {
 		jwtSecret = jwtRaw
 	}
 	return &Config{
-		HTTPPort:   GetEnv("HTTP_PORT", "8080"),
-		JWTSecret:  jwtSecret,
-		GCPProject: gcpProject,
-		AuthURL:    GetEnv("AUTH_SERVICE_URL", "http://auth-service:8081"),
-		AccountURL: GetEnv("ACCOUNT_SERVICE_URL", "http://account-service:8082"),
-		ProductURL: GetEnv("PRODUCT_SERVICE_URL", "http://product-service:8083"),
-		OrderURL:   GetEnv("ORDER_SERVICE_URL", "http://order-service:8084"),
+		HTTPPort:        GetEnv("HTTP_PORT", "8080"),
+		JWTSecret:       jwtSecret,
+		GCPProject:      gcpProject,
+		AuthURL:         GetEnv("AUTH_SERVICE_URL", "http://auth-service:8081"),
+		AccountURL:      GetEnv("ACCOUNT_SERVICE_URL", "http://account-service:8082"),
+		ProductURL:      GetEnv("PRODUCT_SERVICE_URL", "http://product-service:8083"),
+		OrderURL:        GetEnv("ORDER_SERVICE_URL", "http://order-service:8084"),
+		PaymentURL:      GetEnv("PAYMENT_SERVICE_URL", "http://payment-service:8085"),
+		NotificationURL: GetEnv("NOTIFICATION_SERVICE_URL", "http://notification-service:8086"),
 	}, nil
 }
 

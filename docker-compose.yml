@@ -15,6 +15,8 @@ volumes:
   postgres_account_data:
   postgres_product_data:
   postgres_order_data:
+  postgres_payment_data:
+  postgres_notification_data:
   prometheus_data:
   grafana_data:
   loki_data:
@@ -183,6 +185,77 @@ services:
           cpus: "1.0"
           memory: 512M
 
+  payment-db:
+    image: postgres:16-alpine
+    container_name: payment-db
+    env_file: [.env]
+    environment:
+      POSTGRES_USER: ${PAYMENT_DB_USER}
+      POSTGRES_PASSWORD: ${PAYMENT_DB_PASSWORD}
+      POSTGRES_DB: ${PAYMENT_DB_NAME}
+    volumes:
+      - postgres_payment_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [app-network]
+
+  payment-service:
+    build: ./payment-service
+    container_name: payment-service
+    env_file: [.env]
+    environment:
+      HTTP_PORT: "8085"
+      DB_DSN: "host=payment-db port=5432 user=${PAYMENT_DB_USER} password=${PAYMENT_DB_PASSWORD} dbname=${PAYMENT_DB_NAME} sslmode=disable"
+    depends_on:
+      payment-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8085/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging: *default-logging
+    networks: [app-network]
+    restart: unless-stopped
+
+  notification-db:
+    image: postgres:16-alpine
+    container_name: notification-db
+    env_file: [.env]
+    environment:
+      POSTGRES_USER: ${NOTIFICATION_DB_USER}
+      POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
+      POSTGRES_DB: ${NOTIFICATION_DB_NAME}
+    volumes:
+      - postgres_notification_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [app-network]
+
+  notification-service:
+    build: ./notification-service
+    container_name: notification-service
+    env_file: [.env]
+    environment:
+      HTTP_PORT: "8086"
+      DB_DSN: "host=notification-db port=5432 user=${NOTIFICATION_DB_USER} password=${NOTIFICATION_DB_PASSWORD} dbname=${NOTIFICATION_DB_NAME} sslmode=disable"
+    depends_on:
+      notification-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8086/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging: *default-logging
+    networks: [app-network]
+    restart: unless-stopped
 
   gateway:
     build: ./gateway
@@ -194,8 +267,10 @@ services:
       ACCOUNT_SERVICE_URL: "http://account-service:8082"
       PRODUCT_SERVICE_URL: "http://product-service:8083"
       ORDER_SERVICE_URL: "http://order-service:8084"
+      PAYMENT_SERVICE_URL: "http://payment-service:8085"
+      NOTIFICATION_SERVICE_URL: "http://notification-service:8086"
       JWT_SECRET: ${JWT_SECRET}
-    depends_on: [auth-service, account-service, product-service, order-service]
+    depends_on: [auth-service, account-service, product-service, order-service, payment-service, notification-service]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 15s

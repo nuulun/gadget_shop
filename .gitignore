@@ -5,8 +5,12 @@ k8s/secrets.yml
 # Claude Code
 .claude/
 
-# Terraform
-terraform/
+# Terraform — ignore secrets and state, but commit the .tf files
+terraform/terraform.tfvars
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/.terraform/
+terraform/.terraform.lock.hcl
 
 # Node
 node_modules/
@@ -15,11 +19,8 @@ frontend/node_modules/
 # Build output
 frontend/dist/
 
-# Docs
-*.md
-
-.sh
-
 # OS
 .DS_Store
 Thumbs.db
+
+.md

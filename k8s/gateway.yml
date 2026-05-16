@@ -28,6 +28,10 @@ spec:
           value: "http://product-service:8083"
         - name: ORDER_SERVICE_URL
           value: "http://order-service:8084"
+        - name: PAYMENT_SERVICE_URL
+          value: "http://payment-service:8085"
+        - name: NOTIFICATION_SERVICE_URL
+          value: "http://notification-service:8086"
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
@@ -55,8 +59,10 @@ metadata:
   name: gateway
   namespace: gadget-shop
 spec:
+  type: NodePort
   selector:
     app: gateway
   ports:
   - port: 8080
     targetPort: 8080
+    nodePort: 30800
